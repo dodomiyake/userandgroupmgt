@@ -157,8 +157,3 @@ Here's a breakdown of what the script does:
    done <"$INPUT_FILE"
    ```
 
-## Conclusion
-
-This Bash script is a handy tool for automating the creation of users and groups on a Linux system. By understanding and using this script, you can save time and reduce errors in managing users.
-
-[HNG Internship](https://hng.tech/internship)
