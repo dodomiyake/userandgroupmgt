@@ -29,3 +29,43 @@ chmod 600 "$LOG_FILE"
 touch "$PASSWORD_FILE"
 chmod 600 "$PASSWORD_FILE"
 
+# Iterate over each line in the input file
+while IFS=';' read -r username group_list || [ -n "$username" ]; do
+    # Remove leading/trailing whitespace from username and groups
+    username=$(echo "$username" | tr -d '[:space:]')
+    group_list=$(echo "$group_list" | tr -d '[:space:]')
+
+    # Create the user's personal group if it doesn't exist
+    if ! grep -q "^$username:" /etc/group; then
+        groupadd "$username"
+        echo "Created group $username" >> "$LOG_FILE"
+    fi
+
+    # Create the user if they don't exist
+    if ! id "$username" >/dev/null 2>&1; then
+        useradd -m -g "$username" -s /bin/bash "$username"
+        echo "Created user $username" >> "$LOG_FILE"
+    else
+        echo "User $username already exists" >> "$LOG_FILE"
+    fi
+
+    # Add the user to the specified groups
+    IFS=',' read -r -a groups <<< "$group_list"
+    for group in "${groups[@]}"; do
+        if ! grep -q "^$group:" /etc/group; then
+            groupadd "$group"
+            echo "Created group $group" >> "$LOG_FILE"
+        fi
+        usermod -aG "$group" "$username"
+        echo "Added user $username to group $group" >> "$LOG_FILE"
+    done
+
+    # Generate a random password for the user
+    password=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 12)
+    echo "$username:$password" >> "$PASSWORD_FILE"
+    echo "Generated password for user $username" >> "$LOG_FILE"
+
+    # Set the password for the user
+    echo "$username:$password" | chpasswd
+    echo "Set password for user $username" >> "$LOG_FILE"
+done < "$INPUT_FILE"
